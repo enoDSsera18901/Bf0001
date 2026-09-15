@@ -40,6 +40,7 @@ test("Reality Lab demo is manipulable, stressable, breakable, mappable and solva
   await expect(page.getByText("Decision boundary", { exact: true })).toBeVisible();
   await expect(page.locator(".boundary-cell")).toHaveCount(225);
   await expect(page.locator(".boundary-cell.boundary-current")).toHaveCount(1);
+  await page.screenshot({ path: "test-results/decision-boundary.png", fullPage: true });
   await page.locator(".boundary-cell").first().click();
   await expect(page.locator(".boundary-cell").first()).toHaveClass(/boundary-current/);
 
@@ -47,6 +48,7 @@ test("Reality Lab demo is manipulable, stressable, breakable, mappable and solva
   await page.getByRole("button", { name: "Thresholds" }).click();
   await expect(page.getByText("Single-assumption flip thresholds", { exact: true })).toBeVisible();
   await expect(page.locator(".threshold-row")).toHaveCount(5);
+  await page.screenshot({ path: "test-results/decision-thresholds.png", fullPage: true });
   const reachableThreshold = page.locator(".threshold-apply:not(:disabled)").first();
   await expect(reachableThreshold).toBeVisible();
   await reachableThreshold.click();
@@ -58,5 +60,5 @@ test("Reality Lab demo is manipulable, stressable, breakable, mappable and solva
   await expect(page.getByText("Model logic", { exact: true })).toBeVisible();
   await expect(page.locator(".formula-card code").filter({ hasText: "profit = revenue - variable_cost - fixed_cost - ad_spend" })).toBeVisible();
 
-  await page.screenshot({ path: "test-results/reality-lab-demo.png", fullPage: true });
+  await page.screenshot({ path: "test-results/reality-lab-logic.png", fullPage: true });
 });
