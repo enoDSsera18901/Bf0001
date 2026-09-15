@@ -80,7 +80,19 @@ function DecisionCard({ model, snapshot }: { model: RealityModelSpec; snapshot: 
 }
 
 function ModelChart({ model, prepared, values }: { model: RealityModelSpec; prepared: PreparedModel; values: Record<string, number> }) {
-  const data = useMemo(() => evaluateSeries(prepared, values), [prepared, values]);
+  const seriesState = useMemo(() => {
+    try {
+      return { data: evaluateSeries(prepared, values), error: null as string | null };
+    } catch (cause) {
+      return { data: null, error: cause instanceof Error ? cause.message : "Time-series calculation failed." };
+    }
+  }, [prepared, values]);
+
+  if (seriesState.error || !seriesState.data) {
+    return <div className="lab-calc-error"><strong>Timeline stopped.</strong><span>{seriesState.error ?? "Time-series calculation failed."}</span></div>;
+  }
+
+  const data = seriesState.data;
   const width = 880;
   const height = 320;
   const padX = 54;
@@ -244,7 +256,7 @@ export function RealityModel({ model }: { model: RealityModelSpec }) {
           <div>
             <span className="section-kicker">Break this</span>
             <h3>{breakResult.found ? `Found a scenario that flips the conclusion to ${breakResult.after.winnerLabel}.` : "No reversal found in the bounded search grid."}</h3>
-            <p>{breakResult.found ? "This is the nearest flip found across current/default/min/max values for every input." : `Closest tested case leaves a decision margin of ${new Intl.NumberFormat("en-AU", { maximumFractionDigits: 2 }).format(breakResult.after.margin)}.`}</p>
+            <p>{breakResult.found ? "This is the nearest flip found across current/default/min/midpoint/max values for every input." : `Closest tested case leaves a decision margin of ${new Intl.NumberFormat("en-AU", { maximumFractionDigits: 2 }).format(breakResult.after.margin)}.`}</p>
           </div>
           <div className="break-changes">
             {changedInputs(model, values, breakResult.values).map((input) => (

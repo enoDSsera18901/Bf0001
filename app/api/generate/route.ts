@@ -3,10 +3,10 @@ import {
   applyStress,
   defaultValues,
   evaluatePrepared,
-  evaluateSeries,
   findDecisionExtremes,
   prepareModel,
   sensitivity,
+  validatePreparedDomain,
 } from "@/lib/model-engine";
 import { surfaceSchema, type SurfaceSpec } from "@/lib/surface";
 
@@ -34,6 +34,7 @@ GENERAL RULES
 REALITY MODEL CONTRACT
 A RealityModel is a small deterministic calculation graph: inputs -> formulas -> outputs, optionally time series and a two-sided decision rule.
 - Use 2-6 inputs. Every input needs a realistic min, max, step and default.
+- Every formula must remain numerically valid across the entire declared input range, including range corners. If a denominator could become zero or a sqrt/log domain could become invalid, guard it explicitly with max/clamp/conditionals or narrow the input range.
 - Percent-formatted inputs are stored as decimals: 0.061 means 6.1%, not 6.1.
 - Currency values are ordinary numeric amounts; use a three-letter unit such as AUD or USD.
 - Formula keys must be unique and may reference inputs or formulas by key.
@@ -55,13 +56,14 @@ Allowed constructs only:
   loan_balance(principal, annualRateDecimal, years, elapsedYears[, periodsPerYear])
   compound(principal, annualRateDecimal, years[, periodsPerYear])
   annuity(contributionPerPeriod, annualRateDecimal, years[, periodsPerYear])
-Do NOT emit JavaScript, property access, arrays, objects, assignment, Math.*, function definitions, or arbitrary calls.
+Do NOT emit strings, JavaScript, property access, arrays, objects, assignment, Math.*, function definitions, or arbitrary calls.
 
 TIME SERIES
 - series.expression uses the same safe language and may additionally reference t.
 - t is the x-axis value, normally years.
 - Put time-varying calculations in series expressions rather than formulas that reference t.
 - Limit each series to 2-80 points.
+- Series expressions must also remain numerically valid across their entire t range and the model's declared input range.
 - For long-horizon finance, useful patterns include compound(..., t) and loan_balance(..., t).
 
 DECISIONS
@@ -88,9 +90,8 @@ function semanticModelError(surface: SurfaceSpec): string | null {
   if (!surface.model) return null;
   try {
     const prepared = prepareModel(surface.model);
+    validatePreparedDomain(prepared);
     const defaults = defaultValues(surface.model);
-    evaluatePrepared(prepared, defaults);
-    evaluateSeries(prepared, defaults);
     sensitivity(prepared, defaults);
     if (surface.model.decision) findDecisionExtremes(prepared);
     for (let index = 0; index < surface.model.stressTests.length; index += 1) {
@@ -115,7 +116,7 @@ async function compose(prompt: string): Promise<SurfaceSpec> {
 
   console.warn("reality_model_semantic_repair", firstError);
   const priorModel = JSON.stringify(first.object.model ?? null);
-  const repairPrompt = `ORIGINAL USER REQUEST:\n${prompt}\n\nYour previous RealityModel passed the JSON schema but failed deterministic semantic validation:\n${firstError}\n\nPREVIOUS MODEL JSON:\n${priorModel}\n\nReturn a complete corrected SurfaceSpec. If the previous response contained a RealityModel, the corrected response MUST still contain a RealityModel. Fix the actual formula/dependency/range problem; do not evade validation by deleting the model. Use only the allowed formula grammar in the system instructions.`;
+  const repairPrompt = `ORIGINAL USER REQUEST:\n${prompt}\n\nYour previous RealityModel passed the JSON schema but failed deterministic semantic validation:\n${firstError}\n\nPREVIOUS MODEL JSON:\n${priorModel}\n\nReturn a complete corrected SurfaceSpec. If the previous response contained a RealityModel, the corrected response MUST still contain a RealityModel. Fix the actual formula/dependency/range/domain problem; do not evade validation by deleting the model. Use only the allowed formula grammar in the system instructions.`;
 
   const repaired = await generateObject({
     model: "openai/gpt-5.6-sol",

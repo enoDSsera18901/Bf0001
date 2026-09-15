@@ -10,6 +10,7 @@ import {
   findDecisionFlip,
   prepareModel,
   sensitivity,
+  validatePreparedDomain,
 } from "./model-engine";
 
 function businessModel(): RealityModel {
@@ -22,7 +23,6 @@ function businessModel(): RealityModel {
       { key: "volume", label: "Monthly volume", min: 100, max: 3000, step: 100, default: 1000 },
       { key: "fixed", label: "Fixed cost", min: 0, max: 30000, step: 1000, default: 10000, format: "currency", unit: "AUD" },
     ],
-    // Deliberately out of dependency order: profit comes first.
     formulas: [
       { key: "profit", label: "Profit", expression: "revenue - variable_cost - fixed", format: "currency", unit: "AUD" },
       { key: "revenue", label: "Revenue", expression: "price * volume", format: "currency", unit: "AUD" },
@@ -129,7 +129,7 @@ describe("Reality model engine", () => {
     expect(() => prepareModel(model)).toThrow(/cycle/i);
   });
 
-  it("rejects member access and arbitrary function calls", () => {
+  it("rejects member access, arbitrary function calls and string literals", () => {
     const member = businessModel();
     member.formulas = [{ key: "bad", label: "Bad", expression: "price.constructor" }];
     member.outputs = [{ key: "bad", label: "Bad" }];
@@ -139,6 +139,27 @@ describe("Reality model engine", () => {
     call.formulas = [{ key: "bad", label: "Bad", expression: "evil(price)" }];
     call.outputs = [{ key: "bad", label: "Bad" }];
     expect(() => prepareModel(call)).toThrow(/Function evil is not allowed/i);
+
+    const stringLiteral = businessModel();
+    stringLiteral.formulas = [{ key: "bad", label: "Bad", expression: "'hello'" }];
+    stringLiteral.outputs = [{ key: "bad", label: "Bad" }];
+    expect(() => prepareModel(stringLiteral)).toThrow(/numeric and boolean literals/i);
+  });
+
+  it("probes the declared domain and rejects formulas that only fail away from defaults", () => {
+    const model: RealityModel = {
+      title: "Bad domain",
+      description: "Default works but declared minimum does not.",
+      inputs: [{ key: "x", label: "X", min: 0, max: 10, step: 1, default: 10 }],
+      formulas: [{ key: "root", label: "Root", expression: "sqrt(x - 5)" }],
+      outputs: [{ key: "root", label: "Root" }],
+      series: [],
+      stressTests: [],
+      assumptions: [],
+    };
+    const prepared = prepareModel(model);
+    expect(evaluatePrepared(prepared, defaultValues(model)).root).toBeCloseTo(Math.sqrt(5));
+    expect(() => validatePreparedDomain(prepared)).toThrow(/inside its declared domain/i);
   });
 
   it("runs declared stress tests inside the validated input bounds", () => {
@@ -171,6 +192,29 @@ describe("Reality model engine", () => {
     expect(broken?.before.winner).toBe("left");
     expect(broken?.after.winner).toBe("right");
     expect(Object.values(broken?.values ?? {}).every(Number.isFinite)).toBe(true);
+  });
+
+  it("checks midpoints so Break This can catch a nonlinear reversal missed by range endpoints", () => {
+    const model: RealityModel = {
+      title: "Midpoint reversal",
+      description: "The endpoints favor A but the midpoint favors B.",
+      inputs: [{ key: "x", label: "X", min: 0, max: 10, step: 1, default: 0 }],
+      formulas: [
+        { key: "left", label: "A", expression: "(x - 5) ** 2" },
+        { key: "right", label: "B", expression: "10" },
+      ],
+      outputs: [{ key: "left", label: "A" }, { key: "right", label: "B" }],
+      series: [],
+      stressTests: [],
+      decision: { leftKey: "left", leftLabel: "A", rightKey: "right", rightLabel: "B", objective: "higher" },
+      assumptions: [],
+    };
+    const prepared = prepareModel(model);
+    expect(decisionSnapshot(prepared, defaultValues(model))?.winnerLabel).toBe("A");
+    const broken = findDecisionFlip(prepared, defaultValues(model));
+    expect(broken?.found).toBe(true);
+    expect(broken?.values.x).toBe(5);
+    expect(broken?.after.winnerLabel).toBe("B");
   });
 
   it("rejects stress cases outside declared bounds", () => {

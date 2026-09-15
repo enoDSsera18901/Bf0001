@@ -234,7 +234,9 @@ function evaluateNode(node: AstNode, scope: Scope): Scalar {
 
 function collectIdentifiers(node: AstNode, output: Set<string>): void {
   switch (node.type) {
-    case "Literal": return;
+    case "Literal":
+      if (typeof node.value !== "number" && typeof node.value !== "boolean") throw new Error("Only numeric and boolean literals are allowed.");
+      return;
     case "Identifier":
       if (node.name && node.name !== "true" && node.name !== "false") output.add(node.name);
       return;
@@ -395,6 +397,49 @@ export function evaluateSeries(prepared: PreparedModel, values: Record<string, n
   return result;
 }
 
+function probeSignature(model: RealityModel, values: Record<string, number>): string {
+  return model.inputs.map((input) => `${input.key}:${Number(values[input.key]).toPrecision(12)}`).join("|");
+}
+
+export function validatePreparedDomain(prepared: PreparedModel): void {
+  const model = prepared.model;
+  const defaults = defaultValues(model);
+  const probes = new Map<string, { label: string; values: Record<string, number> }>();
+  const addProbe = (label: string, values: Record<string, number>) => {
+    const clamped = clampValues(model, values);
+    probes.set(probeSignature(model, clamped), { label, values: clamped });
+  };
+
+  addProbe("defaults", defaults);
+  for (const input of model.inputs) {
+    const midpoint = input.min + (input.max - input.min) / 2;
+    addProbe(`${input.label} at minimum`, { ...defaults, [input.key]: input.min });
+    addProbe(`${input.label} at midpoint`, { ...defaults, [input.key]: midpoint });
+    addProbe(`${input.label} at maximum`, { ...defaults, [input.key]: input.max });
+  }
+
+  const corners = (index: number, working: Record<string, number>) => {
+    if (index === model.inputs.length) {
+      addProbe("input-range corner", working);
+      return;
+    }
+    const input = model.inputs[index];
+    corners(index + 1, { ...working, [input.key]: input.min });
+    corners(index + 1, { ...working, [input.key]: input.max });
+  };
+  corners(0, { ...defaults });
+
+  for (const probe of probes.values()) {
+    try {
+      evaluatePrepared(prepared, probe.values);
+      evaluateSeries(prepared, probe.values);
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "Unknown evaluation failure.";
+      throw new Error(`Model is invalid inside its declared domain (${probe.label}): ${reason}`);
+    }
+  }
+}
+
 export function decisionSnapshot(prepared: PreparedModel, values: Record<string, number>): DecisionSnapshot | null {
   const decision = prepared.model.decision;
   if (!decision) return null;
@@ -433,7 +478,8 @@ function normalisedDistance(model: RealityModel, from: Record<string, number>, t
 }
 
 function candidates(input: ModelInput, current: number): number[] {
-  return [...new Set([current, input.default, input.min, input.max].map((value) => Number(value.toPrecision(12))))];
+  const midpoint = input.min + (input.max - input.min) / 2;
+  return [...new Set([current, input.default, input.min, midpoint, input.max].map((value) => Number(value.toPrecision(12))))];
 }
 
 export function findDecisionFlip(prepared: PreparedModel, values: Record<string, number>): BreakSearchResult | null {
