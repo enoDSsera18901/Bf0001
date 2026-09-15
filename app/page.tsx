@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { SurfaceRenderer } from "@/components/surface-renderer";
+import { demoSurface } from "@/lib/demo-surface";
 import type { SurfaceSpec } from "@/lib/surface";
 
 const examples = [
@@ -43,6 +44,13 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
+  }
+
+  function openDemo() {
+    setPrompt("Deterministic product-launch demo — no AI call");
+    setSurface(demoSurface);
+    setError(null);
+    setShowSpec(false);
   }
 
   function submit(event: FormEvent) {
@@ -97,6 +105,7 @@ export default function Home() {
           <div className="examples">
             <span>Try one</span>
             <div className="example-grid">
+              <button onClick={openDemo}><strong>Deterministic demo</strong> — open a working product-launch model without calling AI.</button>
               {examples.map((example) => <button key={example} onClick={() => void generate(example)}>{example}</button>)}
             </div>
           </div>
