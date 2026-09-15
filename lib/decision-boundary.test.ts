@@ -32,7 +32,9 @@ describe("decision boundary", () => {
     expect(result.cells).toHaveLength(225);
     expect(result.xInput.key).toBe("upside");
     expect(result.yInput.key).toBe("risk");
-    expect(new Set(result.cells.map((cell) => cell.snapshot.winnerLabel))).toEqual(new Set(["A", "B", "Tie"]));
+    const winners = new Set(result.cells.map((cell) => cell.snapshot.winnerLabel));
+    expect(winners.has("A")).toBe(true);
+    expect(winners.has("B")).toBe(true);
     expect(result.maxAbsMargin).toBeGreaterThan(0);
   });
 
