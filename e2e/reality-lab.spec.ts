@@ -12,7 +12,7 @@ test("Reality Lab demo is manipulable, stressable and breakable", async ({ page 
   const unitsNumber = unitsControl.locator('input[type="number"]');
   await unitsNumber.fill("100");
   await expect(page.locator(".decision-topline")).toContainText("Do not launch");
-  await expect(page.getByText("-$8,400", { exact: false })).toBeVisible();
+  await expect(page.locator(".model-output.output-primary strong")).toHaveText("-$8,400");
 
   await page.getByRole("button", { name: "Reset" }).click();
   await expect(page.locator(".decision-topline")).toContainText("Launch");
