@@ -1,5 +1,14 @@
 import { generateObject } from "ai";
-import { surfaceSchema } from "@/lib/surface";
+import {
+  applyStress,
+  defaultValues,
+  evaluatePrepared,
+  evaluateSeries,
+  findDecisionExtremes,
+  prepareModel,
+  sensitivity,
+} from "@/lib/model-engine";
+import { surfaceSchema, type SurfaceSpec } from "@/lib/surface";
 
 export const maxDuration = 60;
 
@@ -75,31 +84,65 @@ FOLLOW-UPS
 - Follow-up prompts should deepen or replace the underlying model/content, not merely ask to change visual layout. The user can already Morph locally between Simulator, Timeline, Sensitivity and Logic.
 `;
 
+function semanticModelError(surface: SurfaceSpec): string | null {
+  if (!surface.model) return null;
+  try {
+    const prepared = prepareModel(surface.model);
+    const defaults = defaultValues(surface.model);
+    evaluatePrepared(prepared, defaults);
+    evaluateSeries(prepared, defaults);
+    sensitivity(prepared, defaults);
+    if (surface.model.decision) findDecisionExtremes(prepared);
+    for (let index = 0; index < surface.model.stressTests.length; index += 1) {
+      evaluatePrepared(prepared, applyStress(prepared, index));
+    }
+    return null;
+  } catch (error) {
+    return error instanceof Error ? error.message : "Unknown semantic model error.";
+  }
+}
+
+async function compose(prompt: string): Promise<SurfaceSpec> {
+  const first = await generateObject({
+    model: "openai/gpt-5.6-sol",
+    schema: surfaceSchema,
+    system,
+    prompt,
+  });
+
+  const firstError = semanticModelError(first.object);
+  if (!firstError) return first.object;
+
+  console.warn("reality_model_semantic_repair", firstError);
+  const priorModel = JSON.stringify(first.object.model ?? null);
+  const repairPrompt = `ORIGINAL USER REQUEST:\n${prompt}\n\nYour previous RealityModel passed the JSON schema but failed deterministic semantic validation:\n${firstError}\n\nPREVIOUS MODEL JSON:\n${priorModel}\n\nReturn a complete corrected SurfaceSpec. If the previous response contained a RealityModel, the corrected response MUST still contain a RealityModel. Fix the actual formula/dependency/range problem; do not evade validation by deleting the model. Use only the allowed formula grammar in the system instructions.`;
+
+  const repaired = await generateObject({
+    model: "openai/gpt-5.6-sol",
+    schema: surfaceSchema,
+    system,
+    prompt: repairPrompt,
+  });
+
+  const repairedError = semanticModelError(repaired.object);
+  if (repairedError) throw new Error(`RealityModel failed semantic validation after repair: ${repairedError}`);
+  if (first.object.model && !repaired.object.model) throw new Error("RealityModel repair removed the model instead of fixing it.");
+  return repaired.object;
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const prompt = typeof body?.prompt === "string" ? body.prompt.trim() : "";
 
-    if (!prompt) {
-      return Response.json({ error: "A prompt is required." }, { status: 400 });
-    }
+    if (!prompt) return Response.json({ error: "A prompt is required." }, { status: 400 });
+    if (prompt.length > 6000) return Response.json({ error: "Prompt is too long for this V0." }, { status: 400 });
 
-    if (prompt.length > 6000) {
-      return Response.json({ error: "Prompt is too long for this V0." }, { status: 400 });
-    }
-
-    const { object } = await generateObject({
-      model: "openai/gpt-5.6-sol",
-      schema: surfaceSchema,
-      system,
-      prompt,
-    });
-
-    return Response.json(object);
+    return Response.json(await compose(prompt));
   } catch (error) {
     console.error("surface_generation_failed", error);
     return Response.json(
-      { error: "The surface could not be generated or its model contract was invalid. Check AI Gateway configuration and try again." },
+      { error: "The surface could not be generated as a valid model. Check AI Gateway configuration and try again." },
       { status: 500 },
     );
   }
