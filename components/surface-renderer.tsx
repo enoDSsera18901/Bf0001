@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { RealityModel } from "@/components/reality-model";
 import type { SurfaceBlock, SurfaceSpec } from "@/lib/surface";
 
 function Metrics({ block }: { block: Extract<SurfaceBlock, { type: "metrics" }> }) {
@@ -147,7 +148,7 @@ function Scenario({ block }: { block: Extract<SurfaceBlock, { type: "scenario" }
 
   return (
     <section className="surface-card scenario-card">
-      <div className="section-kicker">Interactive scenario</div>
+      <div className="section-kicker">Legacy scenario</div>
       <h2>{block.title}</h2>
       <p className="muted">{block.description}</p>
       <div className="scenario-result">
@@ -160,14 +161,7 @@ function Scenario({ block }: { block: Extract<SurfaceBlock, { type: "scenario" }
           return (
             <label className="slider-control" key={input.key}>
               <div><span>{input.label}</span><strong>{value.toLocaleString()} {input.suffix ?? ""}</strong></div>
-              <input
-                type="range"
-                min={input.min}
-                max={input.max}
-                step={input.step}
-                value={value}
-                onChange={(event) => setValues((current) => ({ ...current, [input.key]: Number(event.target.value) }))}
-              />
+              <input type="range" min={input.min} max={input.max} step={input.step} value={value} onChange={(event) => setValues((current) => ({ ...current, [input.key]: Number(event.target.value) }))} />
               <div className="range-ends"><small>{input.min.toLocaleString()}</small><small>{input.max.toLocaleString()}</small></div>
             </label>
           );
@@ -201,15 +195,14 @@ export function SurfaceRenderer({ surface, onFollowUp }: { surface: SurfaceSpec;
       </header>
 
       <div className="surface-grid">
+        {surface.model && <div className="reality-model-wrap"><RealityModel model={surface.model} /></div>}
         {surface.blocks.map((block, index) => <BlockRenderer block={block} key={`${block.type}-${index}`} />)}
       </div>
 
       {surface.followUps.length > 0 && (
         <div className="followups">
-          <span>Transform this answer</span>
-          <div>
-            {surface.followUps.map((prompt) => <button key={prompt} onClick={() => onFollowUp(prompt)}>{prompt}</button>)}
-          </div>
+          <span>Deepen this model</span>
+          <div>{surface.followUps.map((prompt) => <button key={prompt} onClick={() => onFollowUp(prompt)}>{prompt}</button>)}</div>
         </div>
       )}
     </div>

@@ -5,10 +5,10 @@ import { SurfaceRenderer } from "@/components/surface-renderer";
 import type { SurfaceSpec } from "@/lib/surface";
 
 const examples = [
-  "Compare buying a $35k used car outright vs financing it over five years.",
+  "Build an interactive rent-vs-buy model for a $650k Adelaide home. Use clearly labelled illustrative assumptions and show what would flip the decision.",
+  "Build me an interactive break-even model for a side business selling a $40 product, including fixed costs, unit cost, monthly volume and a stress test.",
+  "Compare two job offers as a manipulable decision: $120k salary with no packaging versus $80k at an eligible not-for-profit with $15,900 salary packaging. State tax simplifications clearly.",
   "Show me the major milestones in the Apollo program as a timeline.",
-  "Build me an interactive break-even explorer for a side business selling a $40 product.",
-  "Rank five approaches to learning Python for someone who already knows Excel well.",
   "Explain how a transformer model processes a sentence, visually and step by step.",
 ];
 
@@ -57,15 +57,15 @@ export default function Home() {
           <span className="brand-mark">A</span>
           <span>AnswerSurface</span>
         </a>
-        <div className="topbar-meta">GENERATIVE UI / V0</div>
+        <div className="topbar-meta">REALITY LAB / V0.2</div>
       </div>
 
       {!surface && !loading && (
         <section className="landing">
-          <div className="eyebrow">The answer should fit the question.</div>
-          <h1>Stop answering everything<br />with <em>text.</em></h1>
+          <div className="eyebrow">The answer should be something you can test.</div>
+          <h1>Stop accepting<br /><em>static answers.</em></h1>
           <p className="landing-copy">
-            Ask for an explanation, decision, comparison or calculation. AnswerSurface chooses an interface and builds the answer into it.
+            Ask for an explanation, decision or quantitative problem. When assumptions matter, AnswerSurface builds a bounded model you can manipulate, stress-test and try to break.
           </p>
         </section>
       )}
@@ -75,7 +75,7 @@ export default function Home() {
           <textarea
             value={prompt}
             onChange={(event) => setPrompt(event.target.value)}
-            placeholder="What do you want to understand, compare or decide?"
+            placeholder="What do you want to understand, compare, model or decide?"
             rows={surface ? 2 : 4}
             disabled={loading}
             onKeyDown={(event) => {
@@ -88,7 +88,7 @@ export default function Home() {
           <div className="composer-footer">
             <span>⌘ / Ctrl + Enter</span>
             <button className="generate-button" type="submit" disabled={loading || !prompt.trim()}>
-              {loading ? <><span className="spinner" /> Composing</> : <>Generate surface <span>↗</span></>}
+              {loading ? <><span className="spinner" /> Composing</> : <>Build answer <span>↗</span></>}
             </button>
           </div>
         </form>
@@ -106,8 +106,8 @@ export default function Home() {
       {loading && (
         <section className="loading-stage">
           <div className="loader-orbit"><span /><span /><span /></div>
-          <h2>Choosing the interface…</h2>
-          <p>The model is composing a typed surface, not writing frontend code.</p>
+          <h2>Composing the model…</h2>
+          <p>The model is producing a typed interface and, where useful, a safe calculation graph.</p>
         </section>
       )}
 
@@ -131,8 +131,8 @@ export default function Home() {
       )}
 
       <footer>
-        <span>Built from public generative-UI patterns.</span>
-        <span>Declarative output · trusted renderers · no arbitrary generated JS</span>
+        <span>Built from public generative-UI and expression-evaluation patterns.</span>
+        <span>Typed output · safe AST interpreter · deterministic stress/search · no generated JS</span>
       </footer>
     </main>
   );
