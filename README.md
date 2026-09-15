@@ -11,19 +11,22 @@ A prompt goes to GPT-5.6 Sol through the Vercel AI SDK. The model returns a vali
 ```text
 inputs → formulas → outputs
             ↓
-      decision / series
+   decision / series / boundary
 ```
 
-The browser then evaluates that model locally. The generated model never becomes executable JavaScript.
+The browser evaluates that model locally. The generated model never becomes executable JavaScript.
 
 ### Reality Lab controls
 
 - **Simulator** — change assumptions with sliders or numeric inputs and recompute outputs immediately.
 - **Timeline** — evaluate model-defined expressions over a bounded `t` range and render the series.
 - **Sensitivity** — move each input across its declared full range, one at a time, and rank how much it changes the decision margin or primary output.
+- **Boundary** — for a declared two-sided decision, evaluate a 15×15 grid across two assumptions and show where the winner changes. The two most sensitive inputs are selected first; other inputs remain at their current values. Axis inputs can be changed and any cell can be clicked to apply that scenario.
 - **Logic** — inspect every generated formula, its dependencies, current value and declared assumptions.
 - **Stress Test** — apply model-defined bounded scenarios plus deterministic min/max corner searches for best/worst decision margin.
-- **Break This** — when the model defines a legitimate two-sided numeric decision, search combinations of current/default/min/max input values for the nearest tested scenario that reverses the winner. If no reversal is found, say so.
+- **Break This** — search combinations of current/default/min/midpoint/max values for the nearest tested scenario that reverses a declared decision. If no reversal is found, say so.
+
+`Boundary` and `Break This` are bounded discrete searches. They are useful adversarial views, not proofs of a continuous global optimum or boundary.
 
 ## Safe calculation grammar
 
@@ -38,9 +41,32 @@ AnswerSurface deliberately supports a smaller grammar:
 - ternary conditions through the official `@jsep-plugin/ternary` plugin;
 - an explicit function allowlist: `min`, `max`, `abs`, `floor`, `ceil`, `sqrt`, `log`, `exp`, `pow`, `round`, `clamp`, `monthly_payment`, `loan_balance`, `compound`, `annuity`.
 
-It rejects member/property access, arrays, objects, assignment, `Math.*`, function definitions and arbitrary function calls.
+It rejects strings, member/property access, arrays, objects, assignment, `Math.*`, function definitions and arbitrary function calls.
 
 Formula dependencies are resolved as a DAG. Cycles and unknown variables are rejected before execution.
+
+## Semantic model validation
+
+A Zod-valid model can still be mathematically unusable. Before an AI-generated model reaches the browser, the server now:
+
+1. parses and validates the formula graph;
+2. evaluates defaults;
+3. evaluates each input at min / midpoint / max with other inputs at defaults;
+4. evaluates every min/max input-range corner (at most 64 for the six-input limit);
+5. evaluates every time-series expression at every probe;
+6. checks sensitivity, decision extremes and declared stress tests.
+
+If semantic validation fails, GPT-5.6 Sol receives the exact deterministic error and gets **one bounded repair attempt**. A model cannot evade repair by deleting itself.
+
+## Deterministic no-AI demo
+
+The landing page contains a committed product-launch model that needs no model/API call. It exists so the entire local interaction loop can be proven reproducibly:
+
+- initial monthly profit: A$4,600;
+- changing monthly units to 100 flips the declared decision to `Do not launch` and produces -A$8,400;
+- Demand Shock stress flips the decision;
+- Break This finds and applies a bounded reversal;
+- Timeline, Sensitivity, Boundary and Logic all render from the same underlying model.
 
 ## Existing generative surfaces
 
@@ -58,7 +84,7 @@ The old linear `scenario` block remains readable for backwards compatibility but
 
 ## Acceptance prompts
 
-Good tests for the V0.2 model layer:
+Good tests for the generated model layer:
 
 - `Build an interactive rent-vs-buy model for a $650k Adelaide home. Use clearly labelled illustrative assumptions and show what would flip the decision.`
 - `Build me an interactive break-even model for a side business selling a $40 product, including fixed costs, unit cost, monthly volume and a stress test.`
@@ -75,20 +101,12 @@ And non-model surfaces should still work:
 npm install
 npm test
 npm run build
+npm run test:e2e
 ```
 
-The deterministic test suite covers:
+The deterministic tests cover formula ordering, cycles, unsafe expression rejection, ternaries, finance primitives, time series, declared-domain failures, stress validation, sensitivity, nonlinear decision flips and decision-boundary generation.
 
-- formula dependency ordering;
-- cycle rejection;
-- member-access and arbitrary-call rejection;
-- ternary evaluation;
-- mortgage/compound primitives;
-- bounded time series;
-- stress validation;
-- sensitivity analysis;
-- decision extremes;
-- a genuine decision flip found by `Break This`.
+The Playwright acceptance uses the runner's real stable Chrome against `next start`. It opens the deterministic demo, changes inputs, verifies a decision reversal, applies stress and Break This, renders every Morph view, verifies the 225-cell Boundary map, clicks a Boundary cell, and inspects model logic.
 
 ## Run locally with AI generation
 
@@ -99,7 +117,7 @@ vercel env pull .env.local
 npm run dev
 ```
 
-Vercel AI Gateway supplies the model connection. The deterministic model engine itself does not need an AI connection once a valid `RealityModel` exists.
+Vercel AI Gateway supplies the model connection. The deterministic model engine and built-in demo do not need an AI connection once a valid `RealityModel` exists.
 
 ## What this does **not** prove
 
@@ -107,11 +125,12 @@ Reality Lab makes the *calculation* inspectable and deterministic. It does **not
 
 - A formula can be internally correct while its assumed growth rate, tax treatment or market input is wrong.
 - No live browsing is performed by this V0 unless a future tool explicitly supplies evidence.
-- `Break This` is a bounded discrete search over current/default/min/max values. It is useful adversarial testing, not a mathematical proof that no continuous reversal exists.
+- `Break This` is a bounded discrete search over five candidate values per input. It can still miss reversals between those grid points.
+- `Boundary` is a finite 15×15 slice across two assumptions while all other inputs are held constant.
 - Algorithmic best/worst cases search min/max corners; they are not global optimisation for every nonlinear model.
 - Financial examples are modelling tools, not financial advice.
 
-Those constraints are deliberate. V0.2 proves the core loop before adding evidence retrieval, optimisation or persistence.
+Those constraints are deliberate. V0.2 proves the model/manipulation loop before adding evidence retrieval, continuous optimisation or persistence.
 
 ## Public implementation references
 

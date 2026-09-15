@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("Reality Lab demo is manipulable, stressable and breakable", async ({ page }) => {
+test("Reality Lab demo is manipulable, stressable, breakable and mappable", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: /Stop accepting/i })).toBeVisible();
 
@@ -35,6 +35,13 @@ test("Reality Lab demo is manipulable, stressable and breakable", async ({ page 
   await page.getByRole("button", { name: "Sensitivity" }).click();
   await expect(page.getByText("What actually matters?", { exact: true })).toBeVisible();
   await expect(page.locator(".sensitivity-row")).toHaveCount(5);
+
+  await page.getByRole("button", { name: "Boundary" }).click();
+  await expect(page.getByText("Decision boundary", { exact: true })).toBeVisible();
+  await expect(page.locator(".boundary-cell")).toHaveCount(225);
+  await expect(page.locator(".boundary-cell.boundary-current")).toHaveCount(1);
+  await page.locator(".boundary-cell").first().click();
+  await expect(page.locator(".boundary-cell").first()).toHaveClass(/boundary-current/);
 
   await page.getByRole("button", { name: "Logic" }).click();
   await expect(page.getByText("Model logic", { exact: true })).toBeVisible();

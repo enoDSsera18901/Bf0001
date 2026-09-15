@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import "./reality.css";
+import "./boundary.css";
 
 export const metadata: Metadata = {
   title: "AnswerSurface · Reality Lab",

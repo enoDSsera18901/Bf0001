@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { DecisionBoundary } from "@/components/decision-boundary";
 import type { ModelInput, ModelOutput, RealityModel as RealityModelSpec, ValueFormat } from "@/lib/surface";
 import {
   applyStress,
@@ -18,7 +19,7 @@ import {
   type PreparedModel,
 } from "@/lib/model-engine";
 
-type View = "simulator" | "timeline" | "sensitivity" | "logic";
+type View = "simulator" | "timeline" | "sensitivity" | "boundary" | "logic";
 
 function currencyCode(unit?: string): string {
   return unit && /^[A-Z]{3}$/.test(unit) ? unit : "AUD";
@@ -197,6 +198,11 @@ export function RealityModel({ model }: { model: RealityModelSpec }) {
     setBreakResult(null);
   };
 
+  const updateBoundaryScenario = (next: Record<string, number>) => {
+    setValues(clampValues(model, next));
+    setBreakResult(null);
+  };
+
   const runBreakSearch = () => {
     try {
       setBreakResult(findDecisionFlip(prepared, values));
@@ -207,6 +213,7 @@ export function RealityModel({ model }: { model: RealityModelSpec }) {
 
   const target = model.decision ? "decision margin" : (model.outputs[0]?.label ?? "primary output");
   const maxSwing = Math.max(1e-9, ...calculation.sensitivities.map((item) => item.swing));
+  const boundaryAvailable = Boolean(model.decision && model.inputs.length >= 2);
 
   return (
     <section className="reality-lab">
@@ -225,9 +232,14 @@ export function RealityModel({ model }: { model: RealityModelSpec }) {
 
       <div className="morph-bar">
         <span>Morph</span>
-        {(["simulator", "timeline", "sensitivity", "logic"] as View[]).map((candidate) => (
-          <button key={candidate} className={view === candidate ? "active" : ""} onClick={() => setView(candidate)} disabled={candidate === "timeline" && model.series.length === 0}>
-            {candidate === "simulator" ? "Simulator" : candidate === "timeline" ? "Timeline" : candidate === "sensitivity" ? "Sensitivity" : "Logic"}
+        {(["simulator", "timeline", "sensitivity", "boundary", "logic"] as View[]).map((candidate) => (
+          <button
+            key={candidate}
+            className={view === candidate ? "active" : ""}
+            onClick={() => setView(candidate)}
+            disabled={(candidate === "timeline" && model.series.length === 0) || (candidate === "boundary" && !boundaryAvailable)}
+          >
+            {candidate === "simulator" ? "Simulator" : candidate === "timeline" ? "Timeline" : candidate === "sensitivity" ? "Sensitivity" : candidate === "boundary" ? "Boundary" : "Logic"}
           </button>
         ))}
       </div>
@@ -319,6 +331,16 @@ export function RealityModel({ model }: { model: RealityModelSpec }) {
             ))}
           </div>
         </div>
+      )}
+
+      {view === "boundary" && boundaryAvailable && (
+        <DecisionBoundary
+          model={model}
+          prepared={prepared}
+          values={values}
+          sensitivities={calculation.sensitivities}
+          onValuesChange={updateBoundaryScenario}
+        />
       )}
 
       {view === "logic" && (
