@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { DecisionBoundary } from "@/components/decision-boundary";
+import { DecisionThresholds } from "@/components/decision-thresholds";
 import type { ModelInput, ModelOutput, RealityModel as RealityModelSpec, ValueFormat } from "@/lib/surface";
 import {
   applyStress,
@@ -19,7 +20,7 @@ import {
   type PreparedModel,
 } from "@/lib/model-engine";
 
-type View = "simulator" | "timeline" | "sensitivity" | "boundary" | "logic";
+type View = "simulator" | "timeline" | "sensitivity" | "boundary" | "thresholds" | "logic";
 
 function currencyCode(unit?: string): string {
   return unit && /^[A-Z]{3}$/.test(unit) ? unit : "AUD";
@@ -198,7 +199,7 @@ export function RealityModel({ model }: { model: RealityModelSpec }) {
     setBreakResult(null);
   };
 
-  const updateBoundaryScenario = (next: Record<string, number>) => {
+  const updateInPlaceScenario = (next: Record<string, number>) => {
     setValues(clampValues(model, next));
     setBreakResult(null);
   };
@@ -213,7 +214,7 @@ export function RealityModel({ model }: { model: RealityModelSpec }) {
 
   const target = model.decision ? "decision margin" : (model.outputs[0]?.label ?? "primary output");
   const maxSwing = Math.max(1e-9, ...calculation.sensitivities.map((item) => item.swing));
-  const boundaryAvailable = Boolean(model.decision && model.inputs.length >= 2);
+  const decisionViewsAvailable = Boolean(model.decision && model.inputs.length >= 2);
 
   return (
     <section className="reality-lab">
@@ -232,14 +233,14 @@ export function RealityModel({ model }: { model: RealityModelSpec }) {
 
       <div className="morph-bar">
         <span>Morph</span>
-        {(["simulator", "timeline", "sensitivity", "boundary", "logic"] as View[]).map((candidate) => (
+        {(["simulator", "timeline", "sensitivity", "boundary", "thresholds", "logic"] as View[]).map((candidate) => (
           <button
             key={candidate}
             className={view === candidate ? "active" : ""}
             onClick={() => setView(candidate)}
-            disabled={(candidate === "timeline" && model.series.length === 0) || (candidate === "boundary" && !boundaryAvailable)}
+            disabled={(candidate === "timeline" && model.series.length === 0) || ((candidate === "boundary" || candidate === "thresholds") && !decisionViewsAvailable)}
           >
-            {candidate === "simulator" ? "Simulator" : candidate === "timeline" ? "Timeline" : candidate === "sensitivity" ? "Sensitivity" : candidate === "boundary" ? "Boundary" : "Logic"}
+            {candidate === "simulator" ? "Simulator" : candidate === "timeline" ? "Timeline" : candidate === "sensitivity" ? "Sensitivity" : candidate === "boundary" ? "Boundary" : candidate === "thresholds" ? "Thresholds" : "Logic"}
           </button>
         ))}
       </div>
@@ -333,13 +334,22 @@ export function RealityModel({ model }: { model: RealityModelSpec }) {
         </div>
       )}
 
-      {view === "boundary" && boundaryAvailable && (
+      {view === "boundary" && decisionViewsAvailable && (
         <DecisionBoundary
           model={model}
           prepared={prepared}
           values={values}
           sensitivities={calculation.sensitivities}
-          onValuesChange={updateBoundaryScenario}
+          onValuesChange={updateInPlaceScenario}
+        />
+      )}
+
+      {view === "thresholds" && decisionViewsAvailable && (
+        <DecisionThresholds
+          model={model}
+          prepared={prepared}
+          values={values}
+          onValuesChange={updateInPlaceScenario}
         />
       )}
 

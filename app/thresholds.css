@@ -1,0 +1,37 @@
+.threshold-panel { padding: 22px 26px 28px; }
+.threshold-heading { display: flex; justify-content: space-between; gap: 24px; align-items: flex-start; margin-bottom: 16px; }
+.threshold-heading h3 { margin: 5px 0 5px; font-size: 22px; letter-spacing: -.035em; }
+.threshold-heading p { margin: 0; color: #7d8981; font-size: 12px; line-height: 1.5; max-width: 650px; }
+.threshold-summary { min-width: 170px; padding: 12px 13px; border: 1px solid rgba(167,215,197,.13); border-radius: 12px; background: rgba(167,215,197,.035); }
+.threshold-summary span, .threshold-summary strong, .threshold-summary small { display: block; }
+.threshold-summary span { color: #738078; font-size: 9px; text-transform: uppercase; letter-spacing: .1em; }
+.threshold-summary strong { color: var(--accent); font-size: 20px; margin: 3px 0; }
+.threshold-summary small { color: #748078; font-size: 10px; line-height: 1.35; }
+.threshold-list { display: grid; gap: 8px; }
+.threshold-row { display: grid; grid-template-columns: 34px minmax(0,1fr) auto; gap: 12px; align-items: center; padding: 13px; border: 1px solid rgba(255,255,255,.055); border-radius: 13px; background: rgba(0,0,0,.1); }
+.threshold-row.threshold-found { border-color: rgba(167,215,197,.12); }
+.threshold-rank { width: 30px; height: 30px; display: grid; place-items: center; border: 1px solid #303a34; border-radius: 8px; color: #829087; font-size: 10px; }
+.threshold-main { min-width: 0; }
+.threshold-name { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; margin-bottom: 7px; }
+.threshold-name strong { font-size: 12px; }
+.threshold-name span { color: var(--accent); font-size: 10px; }
+.threshold-values { display: flex; align-items: baseline; flex-wrap: wrap; gap: 7px; font-size: 12px; }
+.threshold-values span { color: #7c8880; }
+.threshold-values i { color: #59635d; font-size: 10px; font-style: normal; }
+.threshold-values strong { color: #d3dad5; }
+.threshold-distance { height: 5px; margin-top: 8px; border-radius: 999px; background: rgba(255,255,255,.05); overflow: hidden; }
+.threshold-distance i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #698f80, var(--accent)); }
+.threshold-main > small { display: block; margin-top: 5px; color: #616d65; font-size: 9px; }
+.threshold-unreachable { color: #626e66; font-size: 11px; line-height: 1.4; }
+.threshold-apply { border: 1px solid #39463f; border-radius: 9px; background: rgba(167,215,197,.045); color: #b8c5bd; padding: 8px 10px; cursor: pointer; font: inherit; font-size: 10px; }
+.threshold-apply:hover:not(:disabled) { border-color: #6d877b; background: rgba(167,215,197,.09); }
+.threshold-apply:disabled { opacity: .28; cursor: default; }
+.threshold-footnote { margin-top: 13px; padding-top: 11px; border-top: 1px solid rgba(255,255,255,.045); color: #5f6a63; font-size: 9px; line-height: 1.45; }
+
+@media (max-width: 680px) {
+  .threshold-panel { padding-left: 16px; padding-right: 16px; }
+  .threshold-heading { flex-direction: column; }
+  .threshold-summary { width: 100%; }
+  .threshold-row { grid-template-columns: 28px minmax(0,1fr); }
+  .threshold-apply { grid-column: 2; width: fit-content; }
+}

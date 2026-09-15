@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("Reality Lab demo is manipulable, stressable, breakable and mappable", async ({ page }) => {
+test("Reality Lab demo is manipulable, stressable, breakable, mappable and solvable", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: /Stop accepting/i })).toBeVisible();
 
@@ -43,6 +43,17 @@ test("Reality Lab demo is manipulable, stressable, breakable and mappable", asyn
   await page.locator(".boundary-cell").first().click();
   await expect(page.locator(".boundary-cell").first()).toHaveClass(/boundary-current/);
 
+  await page.getByRole("button", { name: "Reset" }).click();
+  await page.getByRole("button", { name: "Thresholds" }).click();
+  await expect(page.getByText("Single-assumption flip thresholds", { exact: true })).toBeVisible();
+  await expect(page.locator(".threshold-row")).toHaveCount(5);
+  const reachableThreshold = page.locator(".threshold-apply:not(:disabled)").first();
+  await expect(reachableThreshold).toBeVisible();
+  await reachableThreshold.click();
+  await page.getByRole("button", { name: "Simulator" }).click();
+  await expect(page.locator(".decision-topline")).toContainText("Do not launch");
+
+  await page.getByRole("button", { name: "Reset" }).click();
   await page.getByRole("button", { name: "Logic" }).click();
   await expect(page.getByText("Model logic", { exact: true })).toBeVisible();
   await expect(page.locator(".formula-card code").filter({ hasText: "profit = revenue - variable_cost - fixed_cost - ad_spend" })).toBeVisible();
